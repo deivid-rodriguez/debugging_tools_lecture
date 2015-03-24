@@ -1,0 +1,20 @@
+.reveal .pretty {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pretty > li {
+  padding-left: 1em;
+  text-indent: -.7em;
+}
+
+.pretty > .tick:before {
+  content: "✔";
+  color: green;
+}
+
+.pretty > .cross:before {
+  content: "✘";
+  color: red;
+}

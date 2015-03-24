@@ -4,7 +4,7 @@
   <head>
     <meta charset='utf-8'>
 
-    <title>The TracePoint API</title>
+    <title>Ruby Debugging Tools</title>
 
     <meta name='description' content='A powerful Ruby debugging tool'>
     <meta name='author' content='David Rodríguez'>
@@ -12,7 +12,8 @@
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
 
     <link rel='stylesheet' href='css/reveal.css'>
-    <link rel='stylesheet' href='css/theme/black.css' id='theme'>
+    <link rel='stylesheet' href='css/theme/solarized.css' id='theme'>
+    <link rel='stylesheet' href='custom_styles.css'>
 
     <!-- Code syntax highlighting -->
     <link rel='stylesheet' href='lib/css/zenburn.css'>
@@ -31,14 +32,328 @@
       <!-- Any section element inside of this container is displayed as a slide -->
       <div class='slides'>
         <section>
-          <h1>The TracePoint API</h1>
-          <h3>A powerful debugging tool for Ruby</h3>
+          <h1>Ruby Debugging Tools</h1>
 
           <p>
             <small>Created by
               <a href='http://github.com/deivid-rodriguez'>David Rodríguez</a>
             </small>
           </p>
+        </section>
+
+        <section>
+          <h3>First, let's introduce our tools</h3>
+        </section>
+
+        <section>
+          <h3>The TracePoint API</h3>
+
+          <ul>
+            <li>
+              Allows execution of custom code on certain program <em>events</em>
+
+              <pre><code>
+  TracePoint.trace(:line) do |tp|
+    puts "A line is going to be run at #{tp.path}:#{tp.lineno}!"
+  end
+              </pre></code>
+            </li>
+
+            <li>
+              Useful for debuggers, profilers, <em>..other ideas?...</em>
+            </li>
+
+            <li>
+              <a href=http://ruby-doc.org/core/TracePoint.html>
+                Reference
+              </a>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Pry</h3>
+
+          <ul>
+            <li>
+              A REPL (Read, Eval, Print, Loop)
+            </li>
+
+            <li>
+              Start a console session with
+
+              <pre><code class=ruby>
+  require 'pry'; binding.pry
+              </code></pre>
+            </li>
+
+            <li>
+              <a href=https://github.com/pry/pry/wiki>
+                Reference
+              </a>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Byebug</h3>
+
+          <ul>
+            <li>
+              A debugger (step by step execution of programs)
+            </li>
+
+            <li>
+              Get a debugger prompt with
+
+              <pre><code class=ruby>
+  require 'byebug'; byebug
+              </code></pre>
+            </li>
+
+            <li>
+              <a href=https://github.com/deivid-rodriguez/byebug/GUIDE.md>
+                Reference
+              </a>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Now let's get our hands dirty!</h2>
+        </section>
+
+        <section>
+          <h3>The problem: Checking for valid Ruby syntax</h3>
+
+          <pre><code class=ruby data-code=code/00-requirement.rb>
+          </code></pre>
+        </section>
+
+        <section>
+          <section>
+            <h3>Write some failing specs</h3>
+
+          </section>
+
+          <section>
+            <h3>Possible specs using Minitest</h3>
+
+            <pre><code class=ruby data-code=code/01-failing_specs.rb>
+            </code></pre>
+          </section>
+
+          <section>
+            <h3>Specs fail</h3>
+
+            <img src=img/01-failing_specs_output.png></img>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h3>Now let's code to get the tests green</h3>
+          </section>
+
+          <section>
+            <h3>Our plan</h3>
+
+            <ul class=pretty>
+              <li class='cross'>
+                Can't subshell to <em>ruby -c</em>
+
+                <pre><code>
+    return system("ruby -c #{file}")
+                </code></pre>
+              </li>
+
+              <li class='cross'>
+                Can't eval the file
+
+                <pre><code>
+    begin
+      load(filename)
+      true
+    rescue SyntaxError
+      false
+    end
+                </code></pre>
+              </li>
+
+              <li class='tick'>
+                Hi,
+                <a href=http://ruby-doc.org/core/RubyVM/InstructionSequence.html>
+                  VM::InstructionSequence
+                </a>!
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h3>Possible Implementation</h3>
+
+            <pre><code class=ruby data-code=code/02-first_implementation.rb>
+            </code></pre>
+          </section>
+
+          <section>
+            <h3>But the specs fail</h3>
+
+            <img src=img/02-first_implementation_output.png></img>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h3>TracePoint API to the rescue!</h3>
+          </section>
+
+          <section>
+            We add a tracepoint for every exception raised by our program
+
+            <pre><code>
+  def trace_exceptions
+    TracePoint.new(:raise) do |tp|
+      puts "Raised #{tp.raised_exception.class} @ #{tp.path}:#{tp.lineno}"
+    end
+  end
+            </code></pre>
+
+            And then enable it for our failing assertion
+
+            <pre><code>
+    trace_exceptions.enable do
+      assert_equal false, valid_script?('my_test_file.rb')
+    end
+            </pre></code>
+          </section>
+
+          <section>
+            <h3>No exception raised at all!</h3>
+
+            <img src=img/tracepoint.png></img>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h3>Pry to the rescue!</h3>
+          </section>
+
+          <section>
+            <h3>Let's experiment in the console</h3>
+
+            <img src=img/pry.png></img>
+          </section>
+
+          <section>
+            <h3>Hypothesis</h3>
+
+            <ul class=pretty>
+              <li class=cross>
+                <em>RubyVM::InstructionSequence.compile_file</em>
+              </li>
+
+              <li class=tick>
+                <em>RubyVM::InstructionSequence.compile</em>
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h3>Let's try again</h3>
+          </section>
+
+          <section>
+            <h3>Something like this...</h3>
+
+            <pre><code class=ruby data-code=code/03-second_implementation.rb>
+            </code></pre>
+          </section>
+
+          <section>
+            <h3>But the specs fail again... :(</h3>
+
+            <img src=img/03-second_implementation_output.png></img>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h3>Byebug to the rescue!</h3>
+          </section>
+
+          <section>
+            <h3>Let's step through the source code</h3>
+
+            <img src=img/byebug.png></img>
+          </section>
+
+          <section>
+            <h3>Spot the bug!</h3>
+
+            <ul class=pretty>
+              <li class=cross>
+                We left the file descriptor opened... :S
+
+                <pre><code>
+  f = File.open('name.rb')
+  f.write('puts "Hi!"')
+  f.close # We forgot this!
+                </code></pre>
+              </li>
+
+              <li class=tick>
+                File.open with a block automatically closes it!
+
+                <pre><code>
+  File.open('name.rb', 'w') do |f|
+    f.write('puts "Hi!"')
+  end
+                </code></pre>
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h3>So let's fix the bug!</h3>
+          </section>
+
+          <section>
+            <h3>Final version</h3>
+
+            <pre><code class=ruby data-code=code/04-final_version.rb>
+            </code></pre>
+          </section>
+
+          <section>
+            <h3>And the specs pass! :)</h3>
+
+            <img src=img/04-final_version_output.png></img>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h3>Homework</h3>
+
+            <p>Remove the garbage output left by our method</p>
+          </section>
+
+          <section>
+            <h3>Solution</h3>
+
+            <p>
+              Have a look
+              <a
+                href=https://github.com/deivid-rodriguez/byebug/commit/15a62a77>
+                here
+              </a>
+          </section>
         </section>
       </div>
 
@@ -47,6 +362,6 @@
     <script src='lib/js/head.min.js'></script>
     <script src='js/reveal.js'></script>
 
-    <script src='revealjs-conf.js'></script>
+    <script src='conf.js'></script>
   </body>
 </html>
