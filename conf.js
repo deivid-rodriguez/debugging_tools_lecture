@@ -10,8 +10,6 @@ Reveal.initialize({
 
   transition: 'slide', // none/fade/slide/convex/concave/zoom
 
-  previewLinks: true,
-
   dependencies: [
     {
       src: 'plugin/highlight/highlight.js',
